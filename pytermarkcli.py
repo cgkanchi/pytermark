@@ -1,12 +1,18 @@
 import os
 import sys
+import itertools
 import click
 from tqdm import tqdm
 from PIL import Image, ImageFont, ImageDraw
+import glob
 
-
+# hack to allow wildcard args in windows
+if sys.platform == 'win32':
+    infile_type = click.Path()
+else:
+    infile_type = click.Path(exists=True)
 @click.command()
-@click.argument('infile', type=click.Path(exists=True), nargs=-1)
+@click.argument('infile', type=infile_type, nargs=-1)
 @click.argument('text', required=True)
 @click.option('--location', '-l', default='center', type=click.Choice(['lower-left', 'upper-left', 'upper-right',
                                                                        'lower-right', 'center', 'centre',
@@ -21,6 +27,10 @@ from PIL import Image, ImageFont, ImageDraw
 @click.option('--size', default='auto', help='Size of watermark. Can be an integer or one of small, medium, large or auto. Default is auto.')
 @click.option('--text-color', default='white', help='Color name. Currently only "white" and "black" are supported.')
 def watermark(infile, text, location, transparency, inplace, out_type, jpeg_quality, font, size, text_color):
+    if sys.platform == 'win32':
+            # hack for windows to handle wildcards
+            infile = list(itertools.chain.from_iterable([glob.glob(i) for i in infile if '*' in i] + [i for i in infile if '*' not in i]))
+
     print('Found {} files to process'.format(len(infile)))
     for f in tqdm(infile):
         _watermark(f, text, location, transparency, inplace, out_type, jpeg_quality, font, size, text_color)
@@ -30,7 +40,7 @@ def watermark(infile, text, location, transparency, inplace, out_type, jpeg_qual
 def _watermark(infile, text, location, transparency, inplace, out_type, jpeg_quality, font, size, text_color, return_image=False):
     if not inplace:
         splitname = os.path.splitext(infile)
-        if out_type:
+        if out_type and out_type != 'input':
             splitname = list(splitname[:-1])
             splitname.append('.{}'.format(out_type))
 
@@ -42,6 +52,8 @@ def _watermark(infile, text, location, transparency, inplace, out_type, jpeg_qua
     width, height = img.size
     if sys.platform == 'linux' and not font:
         font_path = '/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf'
+    elif sys.platform == 'win32' and not font:
+        font_path = 'times.ttf'
     else:
         font_path = font
 
@@ -64,6 +76,9 @@ def _watermark(infile, text, location, transparency, inplace, out_type, jpeg_qua
     if out_type in ('jpg', 'jpeg'):
         extra_args = {'subsampling': 0, 'quality': jpeg_quality}
     out_type = 'jpeg' if out_type == 'jpg' else out_type
+    if out_type == 'input':
+        out_type = None 
+        
     out_img.save(outfilename, format=out_type, **extra_args)
 
 
