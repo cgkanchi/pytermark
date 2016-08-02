@@ -1,6 +1,5 @@
 import os
 import sys
-import itertools
 import click
 from tqdm import tqdm
 from PIL import Image, ImageFont, ImageDraw
@@ -23,19 +22,30 @@ else:
 @click.option('--out-type', type=click.Choice(['jpeg', 'jpg', 'png', 'tiff', 'tif', 'input']), default='input', help='Output file type. Default is the same as input')
 @click.option('--jpeg-quality', '-q', type=click.IntRange(1, 100), default=100,
               help='JPEG quality setting. Default is 100. Ignored if out-type is not jpeg/jpg.')
-@click.option('--font', help='Font to use. If font file doesn\'t exist, raises an error. On Linux, you may have to specify the full path of the font file.')
-@click.option('--size', default='auto', help='Size of watermark. Can be an integer or one of small, medium, large or auto. Default is auto.')
+@click.option('--font',
+              help='Font to use. If font file doesn\'t exist, raises an error. On Linux, you may have to specify the full path of the font file.')
+@click.option('--size', default='auto',
+              help='Size of watermark. Can be an integer or one of small, medium, large or auto. Default is auto.')
 @click.option('--text-color', default='white', help='Color name. Currently only "white" and "black" are supported.')
 def watermark(infile, text, location, transparency, inplace, out_type, jpeg_quality, font, size, text_color):
     if sys.platform == 'win32':
             # hack for windows to handle wildcards
-            infile = list(itertools.chain.from_iterable([glob.glob(i) for i in infile if '*' in i] + [i for i in infile if '*' not in i]))
-
+            infile = list(_ljoin([glob.glob(i) for i in infile if '*' in i]) + [i for i in infile if '*' not in i])
     print('Found {} files to process'.format(len(infile)))
     for f in tqdm(infile):
         _watermark(f, text, location, transparency, inplace, out_type, jpeg_quality, font, size, text_color)
     print('Done!')
 
+
+def _ljoin(lol):
+    '''Return a flattened list from a list of lists - only goes one level deep (by design) and ignores iterables that are not lists or tuples (also by design)'''
+    flat = []
+    for l in lol:
+        if isinstance(l, list) or isinstance(l, tuple):
+            flat.extend(l)
+        else:
+            flat.append(l)
+    return flat
 
 def _watermark(infile, text, location, transparency, inplace, out_type, jpeg_quality, font, size, text_color, return_image=False):
     if not inplace:
@@ -77,8 +87,8 @@ def _watermark(infile, text, location, transparency, inplace, out_type, jpeg_qua
         extra_args = {'subsampling': 0, 'quality': jpeg_quality}
     out_type = 'jpeg' if out_type == 'jpg' else out_type
     if out_type == 'input':
-        out_type = None 
-        
+        out_type = None
+
     out_img.save(outfilename, format=out_type, **extra_args)
 
 
