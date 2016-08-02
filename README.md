@@ -1,2 +1,3 @@
 # pytermark
-Simple tool to add watermarks to images
+pytermarkcli.py - Simple tool to add watermarks to images
+cropper.py - Simple tool to crop images so you can get the right aspect ratio for wallpapers, etc :)
